@@ -1,0 +1,42 @@
+name: Build OpenWrt .ipk
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Source
+      uses: actions/checkout@v3
+
+    - name: Install Build Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libncurses5-dev zlib1g-dev gawk git gettext libssl-dev xsltproc wget unzip python3
+
+    - name: Download OpenWrt SDK
+      run: |
+        wget https://downloads.openwrt.org/releases/23.05.0/targets/x86/64/openwrt-sdk-23.05.0-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz
+        tar xf openwrt-sdk-23.05.0-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz
+        mv openwrt-sdk-23.05.0-x86-64_gcc-12.3.0_musl.Linux-x86_64 openwrt-sdk
+
+    - name: Copy luci-app-eqosplus to SDK
+      run: |
+        cp -r . openwrt-sdk/package/luci-app-eqosplus
+
+    - name: Build luci-app-eqosplus
+      run: |
+        cd openwrt-sdk
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a
+        make package/luci-app-eqosplus/compile V=s
+
+    - name: Upload .ipk Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: luci-app-eqosplus-ipk
+        path: openwrt-sdk/bin/packages/*/*/luci-app-eqosplus_*.ipk
